@@ -687,6 +687,15 @@ object Form1: TForm1
         Caption = 'Last entry of this group'
         TabOrder = 6
       end
+      object DBG_Groups: TMemo
+        Left = 328
+        Top = 104
+        Width = 281
+        Height = 145
+        Lines.Strings = (
+          'DBG_Groups')
+        TabOrder = 7
+      end
     end
   end
   object StatusBar: TStatusBar

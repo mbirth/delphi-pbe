@@ -103,6 +103,7 @@ type
     Label20: TLabel;
     DBG_SelEntry: TSpinEdit;
     DBG_LastEntry: TCheckBox;
+    DBG_Groups: TMemo;
     procedure Button_LoadClick(Sender: TObject);
     procedure PB_ListClick(Sender: TObject);
     procedure PB_OrderFLClick(Sender: TObject);
@@ -133,6 +134,21 @@ type
     Value: AnsiString;
     LastOfGroup: Boolean;
   end;
+  TStartEnd = record
+    from, til: word;
+  end;
+  TGroups = record
+    Contacts: TStartEnd;
+    Calendar: TStartEnd;
+    SMSes: TStartEnd;
+    SettingsData: TStartEnd;
+    SettingsWAP: TStartEnd;
+    Bookmarks: TStartEnd;
+    SettingsProfiles: TStartEnd;
+    SettingsLocks: TStartEnd;
+    SettingsTime: TStartEnd;
+    SettingsCustMenu: TStartEnd;
+  end;
 
 var
   Form1: TForm1;
@@ -140,6 +156,7 @@ var
   PB: array of TPBData;
   PhoneBook: array of TPhoneEntry;
   PhoneBookPhotoCount: integer = 0;
+  Groups: TGroups;
   f: Textfile;
 
 
@@ -359,6 +376,27 @@ begin
     Form1.ProgressBar.Position := FilePos(InFile);
     cl := Trim(cl);
     cl := StringReplace(cl, '<br/>', CRLF, [rfReplaceAll]);
+    if (cl='<Contacts>') then Groups.Contacts.from := i
+      else if (cl='<Contacts/>') then Groups.Contacts.til := i-1
+      else if (cl='<Calendar>') then Groups.Calendar.from := i
+      else if (cl='<Calendar/>') then Groups.Calendar.til := i-1
+      else if (cl='<SMS_Messages>') then Groups.SMSes.from := i
+      else if (cl='<SMS_Messages/>') then Groups.SMSes.til := i-1
+      else if (cl='<Settings_DataAccount>') then Groups.SettingsData.from := i
+      else if (cl='<Settings_DataAccount/>') then Groups.SettingsData.til := i-1
+      else if (cl='<Settings_WAP>') then Groups.SettingsWAP.from := i
+      else if (cl='<Settings_WAP/>') then Groups.SettingsWAP.til := i-1
+      else if (cl='<Bookmarks>') then Groups.Bookmarks.from := i
+      else if (cl='<Bookmarks/>') then Groups.Bookmarks.til := i-1
+      else if (cl='<Settings_Profiles>') then Groups.SettingsProfiles.from := i
+      else if (cl='<Settings_Profiles/>') then Groups.SettingsProfiles.til := i-1
+      else if (cl='<Settings_Locks>') then Groups.SettingsLocks.from := i
+      else if (cl='<Settings_Locks/>') then Groups.SettingsLocks.til := i-1
+      else if (cl='<Settings_Time>') then Groups.SettingsTime.from := i
+      else if (cl='<Settings_Time/>') then Groups.SettingsTime.til := i-1
+      else if (cl='<Settings_CustomMenu>') then Groups.SettingsCustMenu.from := i
+      else if (cl='<Settings_CustomMenu/>') then Groups.SettingsCustMenu.til := i-1;
+
     if (cl[1]='<') AND (cl[Length(cl)]='>') AND (cl[Length(cl)-1]<>'/') AND (Pos(' ',cl)=0) then begin
       gp := gp + '>' + Copy(cl, 2, Length(cl)-2);
     end else if (cl[1]='<') AND (cl[Length(cl)-1]+cl[Length(cl)]='/>') AND (Pos(' ',cl)=0) then begin
@@ -387,22 +425,35 @@ begin
   until Eof(InFile);
   Form1.DBG_Count.Text := IntToStr(i);
   Form1.DBG_SelEntry.MaxValue := i-1;
+  Form1.DBG_Groups.Text := 'Contacts: '+IntToStr(Groups.Contacts.from)+'..'+IntToStr(Groups.Contacts.til)+CRLF+
+                           'Calendar: '+IntToStr(Groups.Calendar.from)+'..'+IntToStr(Groups.Calendar.til)+CRLF+
+                           'SMSes: '+IntToStr(Groups.SMSes.from)+'..'+IntToStr(Groups.SMSes.til)+CRLF+
+                           'Data: '+IntToStr(Groups.SettingsData.from)+'..'+IntToStr(Groups.SettingsData.til)+CRLF+
+                           'WAP: '+IntToStr(Groups.SettingsWAP.from)+'..'+IntToStr(Groups.SettingsWAP.til)+CRLF+
+                           'Bookmarks: '+IntToStr(Groups.Bookmarks.from)+'..'+IntToStr(Groups.Bookmarks.til)+CRLF+
+                           'Profiles: '+IntToStr(Groups.SettingsProfiles.from)+'..'+IntToStr(Groups.SettingsProfiles.til)+CRLF+
+                           'Locks: '+IntToStr(Groups.SettingsLocks.from)+'..'+IntToStr(Groups.SettingsLocks.til)+CRLF+
+                           'Time: '+IntToStr(Groups.SettingsTime.from)+'..'+IntToStr(Groups.SettingsTime.til)+CRLF+
+                           'CustomMenu: '+IntToStr(Groups.SettingsCustMenu.from)+'..'+IntToStr(Groups.SettingsCustMenu.til);
+
+  Form1.ProgressBar.Visible := false;
   Form1.StatusBar.SimpleText := 'File openened. Now parsing for Contacts ...';
 
   j := 1;
-  i := 0;
-  while (i<Length(PB)-1) do begin
-    if  (Pos('Contacts', PB[i].Group)>0) then begin
-      SetLength(PhoneBook, j);
-      PhoneBook[j-1] := ParsePBStream(PB[i].Value);
-      Inc(j);
-    end;
+  i := Groups.Contacts.from;
+  Form1.ProgressBar.Min := Groups.Contacts.from;
+  Form1.ProgressBar.Max := Groups.Contacts.til;
+  Form1.ProgressBar.Position := Groups.Contacts.from;
+  Form1.ProgressBar.Visible := true;
+  while (i<=Groups.Contacts.til) do begin
+    Form1.ProgressBar.Position := i;
+    SetLength(PhoneBook, j);
+    PhoneBook[j-1] := ParsePBStream(PB[i].Value);
+    Inc(j);
     Inc(i);
-    if (Pos('Calendar', PB[i].Group)>0) then break;
   end;
   Form1.StatusBar.SimpleText := 'Loaded '+IntToStr(Length(PhoneBook))+' contacts into memory.';
   BuildPBList;
-
   Form1.ProgressBar.Visible := false;
 end;
 
