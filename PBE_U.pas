@@ -104,6 +104,16 @@ type
     DBG_SelEntry: TSpinEdit;
     DBG_LastEntry: TCheckBox;
     DBG_Groups: TMemo;
+    ProgBarText: TLabel;
+    SC_List: TListBox;
+    SC_ButtonUp: TButton;
+    SC_ButtonDown: TButton;
+    SC_AvailSCs: TComboBox;
+    SC_ButtonAdd: TButton;
+    SC_ButtonDel: TButton;
+    SM_RadioSent: TRadioButton;
+    SM_RadioRecvd: TRadioButton;
+    BM_ButtonSave: TButton;
     procedure Button_LoadClick(Sender: TObject);
     procedure PB_ListClick(Sender: TObject);
     procedure PB_OrderFLClick(Sender: TObject);
@@ -114,6 +124,8 @@ type
     procedure DirectoryListBox1Change(Sender: TObject);
     procedure Button_CloseClick(Sender: TObject);
     procedure DBG_ShowEntryClick(Sender: TObject);
+    procedure Button_SaveClick(Sender: TObject);
+    procedure Button_SaveAsClick(Sender: TObject);
   private
     { Private declarations }
   public
@@ -365,12 +377,38 @@ procedure ReadPBintoMem(var InFile: TextFile);
 var i, j: integer;
     cl, gp: AnsiString;
 begin
+  (*********************************************************************
+  ***** READ FILE INTO ARRAY                                       *****
+  *********************************************************************)
   Form1.ProgressBar.Min := 0;
   Form1.ProgressBar.Max := FileSize(InFile);
   Form1.ProgressBar.Position := 0;
   Form1.ProgressBar.Visible := true;
+  Form1.ProgBarText.Caption := 'Reading file...';
+  Application.ProcessMessages;
   i:=0;
   gp := '';
+  Groups.Contacts.from := $FFFF;
+  Groups.Contacts.til := $FFFF;
+  Groups.Calendar.from := $FFFF;
+  Groups.Calendar.til := $FFFF;
+  Groups.SMSes.from := $FFFF;
+  Groups.SMSes.til := $FFFF;
+  Groups.SettingsData.from := $FFFF;
+  Groups.SettingsData.til := $FFFF;
+  Groups.SettingsWAP.from := $FFFF;
+  Groups.SettingsWAP.til := $FFFF;
+  Groups.Bookmarks.from := $FFFF;
+  Groups.Bookmarks.til := $FFFF;
+  Groups.SettingsProfiles.from := $FFFF;
+  Groups.SettingsProfiles.til := $FFFF;
+  Groups.SettingsLocks.from := $FFFF;
+  Groups.SettingsLocks.til := $FFFF;
+  Groups.SettingsTime.from := $FFFF;
+  Groups.SettingsTime.til := $FFFF;
+  Groups.SettingsCustMenu.from := $FFFF;
+  Groups.SettingsCustMenu.til := $FFFF;
+
   repeat
     ReadLn(InFile, cl);
     Form1.ProgressBar.Position := FilePos(InFile);
@@ -423,6 +461,7 @@ begin
       PB[i-1].Value := PB[i-1].Value + Copy(cl,1,Pos('/>', cl)-2);
     end;
   until Eof(InFile);
+  Form1.ProgressBar.Visible := false;
   Form1.DBG_Count.Text := IntToStr(i);
   Form1.DBG_SelEntry.MaxValue := i-1;
   Form1.DBG_Groups.Text := 'Contacts: '+IntToStr(Groups.Contacts.from)+'..'+IntToStr(Groups.Contacts.til)+CRLF+
@@ -436,25 +475,113 @@ begin
                            'Time: '+IntToStr(Groups.SettingsTime.from)+'..'+IntToStr(Groups.SettingsTime.til)+CRLF+
                            'CustomMenu: '+IntToStr(Groups.SettingsCustMenu.from)+'..'+IntToStr(Groups.SettingsCustMenu.til);
 
-  Form1.ProgressBar.Visible := false;
   Form1.StatusBar.SimpleText := 'File openened. Now parsing for Contacts ...';
 
-  j := 1;
-  i := Groups.Contacts.from;
-  Form1.ProgressBar.Min := Groups.Contacts.from;
-  Form1.ProgressBar.Max := Groups.Contacts.til;
-  Form1.ProgressBar.Position := Groups.Contacts.from;
-  Form1.ProgressBar.Visible := true;
-  while (i<=Groups.Contacts.til) do begin
-    Form1.ProgressBar.Position := i;
-    SetLength(PhoneBook, j);
-    PhoneBook[j-1] := ParsePBStream(PB[i].Value);
-    Inc(j);
-    Inc(i);
+  (*********************************************************************
+  ***** PARSE CONTACTS FROM ARRAY                                  *****
+  *********************************************************************)
+  Form1.ProgBarText.Caption := 'Parsing Contacts (1/10) ...';
+  Application.ProcessMessages;
+  if (Groups.Contacts.from<$FFFF) then begin
+    j := 1;
+    i := Groups.Contacts.from;
+    Form1.ProgressBar.Min := Groups.Contacts.from;
+    Form1.ProgressBar.Max := Groups.Contacts.til;
+    Form1.ProgressBar.Position := Groups.Contacts.from;
+    Form1.ProgressBar.Visible := true;
+    while (i<=Groups.Contacts.til) do begin
+      Form1.ProgressBar.Position := i;
+      SetLength(PhoneBook, j);
+      PhoneBook[j-1] := ParsePBStream(PB[i].Value);
+      Inc(j);
+      Inc(i);
+    end;
+    Form1.StatusBar.SimpleText := 'Loaded '+IntToStr(Length(PhoneBook))+' contacts into memory.';
+    BuildPBList;
+    Form1.ProgressBar.Visible := false;
   end;
-  Form1.StatusBar.SimpleText := 'Loaded '+IntToStr(Length(PhoneBook))+' contacts into memory.';
-  BuildPBList;
-  Form1.ProgressBar.Visible := false;
+
+  (*********************************************************************
+  ***** PARSE CALENDAR ENTRIES FROM ARRAY                          *****
+  *********************************************************************)
+  Form1.ProgBarText.Caption := 'Parsing Calendar (2/10) ...';
+  Application.ProcessMessages;
+  if (Groups.Calendar.from<$FFFF) then begin
+
+  end;
+
+  (*********************************************************************
+  ***** PARSE SMSes FROM ARRAY                                     *****
+  *********************************************************************)
+  Form1.ProgBarText.Caption := 'Parsing SMSes (3/10) ...';
+  Application.ProcessMessages;
+  if (Groups.SMSes.from<$FFFF) then begin
+
+  end;
+
+  (*********************************************************************
+  ***** PARSE DATA ACCOUNTS FROM ARRAY                             *****
+  *********************************************************************)
+  Form1.ProgBarText.Caption := 'Parsing Data accounts (4/10) ...';
+  Application.ProcessMessages;
+  if (Groups.SettingsData.from<$FFFF) then begin
+
+  end;
+
+  (*********************************************************************
+  ***** PARSE WAP ACCOUNTS FROM ARRAY                              *****
+  *********************************************************************)
+  Form1.ProgBarText.Caption := 'Parsing WAP accounts (5/10) ...';
+  Application.ProcessMessages;
+  if (Groups.SettingsWAP.from<$FFFF) then begin
+
+  end;
+
+  (*********************************************************************
+  ***** PARSE BOOKMARKS FROM ARRAY                                 *****
+  *********************************************************************)
+  Form1.ProgBarText.Caption := 'Parsing Bookmarks (6/10) ...';
+  Application.ProcessMessages;
+  if (Groups.Bookmarks.from<$FFFF) then begin
+
+  end;
+
+  (*********************************************************************
+  ***** PARSE PROFILES FROM ARRAY                                  *****
+  *********************************************************************)
+  Form1.ProgBarText.Caption := 'Parsing Profiles (7/10) ...';
+  Application.ProcessMessages;
+  if (Groups.SettingsProfiles.from<$FFFF) then begin
+
+  end;
+
+  (*********************************************************************
+  ***** PARSE LOCK SETTINGS FROM ARRAY                             *****
+  *********************************************************************)
+  Form1.ProgBarText.Caption := 'Parsing Locks (8/10) ...';
+  Application.ProcessMessages;
+  if (Groups.SettingsLocks.from<$FFFF) then begin
+
+  end;
+
+  (*********************************************************************
+  ***** PARSE TIME SETTINGS FROM ARRAY                             *****
+  *********************************************************************)
+  Form1.ProgBarText.Caption := 'Parsing Time settings (9/10) ...';
+  Application.ProcessMessages;
+  if (Groups.SettingsTime.from<$FFFF) then begin
+
+  end;
+
+  (*********************************************************************
+  ***** PARSE CUSTOM MENUS FROM ARRAY                              *****
+  *********************************************************************)
+  Form1.ProgBarText.Caption := 'Parsing Custom Menus (10/10) ...';
+  Application.ProcessMessages;
+  if (Groups.SettingsCustMenu.from<$FFFF) then begin
+
+  end;
+
 end;
 
 procedure EnablePBFields(x: boolean);
@@ -488,6 +615,8 @@ begin
   Form1.DriveComboBox1.Enabled := false;
   Form1.FilterComboBox1.Enabled := false;
   Form1.FileListBox1.Enabled := false;
+  Form1.FileName.Visible := false;
+  Form1.ProgBarText.Visible := true;
   BackupFileName := DirectoryListBox1.Directory+'\'+FileName.Text;
   StatusBar.SimpleText := 'Loading '+BackupFileName+' ...';
   AssignFile(f,BackupFileName);
@@ -497,6 +626,8 @@ begin
   ReadPBintoMem(f);
   StatusBar.SimpleText := StatusBar.SimpleText + ' done.';
   CloseFile(f);
+  Form1.ProgBarText.Visible := false;
+  Form1.FileName.Visible := true;
   Form1.PB_List.Enabled := true;
   Form1.PB_OrderGroup.Enabled := true;
   Form1.PB_OrderFL.Enabled := true;
@@ -561,6 +692,7 @@ end;
 
 procedure TForm1.FormClose(Sender: TObject; var Action: TCloseAction);
 begin
+  StatusBar.SimpleText := 'Cleaning up ...';
   DeleteTemp;
 end;
 
@@ -576,35 +708,42 @@ end;
 
 procedure TForm1.Button_CloseClick(Sender: TObject);
 begin
-  StatusBar.SimpleText := 'Cleaning up ...';
-  EnablePBFields(false);
-  PB_List.Enabled := false;
-  PB_OrderGroup.Enabled := false;
-  PB_OrderFL.Enabled := false;
-  PB_OrderLF.Enabled := false;
-  PB_List.Clear;
-  PB_Name.Text := '';
-  PB_Home.Text := '';
-  PB_Work.Text := '';
-  PB_Mobile.Text := '';
-  PB_Fax.Text := '';
-  PB_Other.Text := '';
-  PB_Email.Text := '';
-  PB_Title.Text := '';
-  PB_Company.Text := '';
-  PB_PhotoAtt.Checked := false;
-  PB_Photo.Visible := false;
-  DeleteTemp;
-  SetLength(PhoneBook, 0);
-  StatusBar.SimpleText := StatusBar.SimpleText + ' done.';
-  Button_Close.Enabled := false;
-  Button_SaveAs.Enabled := false;
-  Button_Save.Enabled := false;
-  if (FileExists(DirectoryListBox1.Directory+'\'+FileName.Text)) AND (Pos('*',FileName.Text)=0) then Button_Load.Enabled := true else Button_Load.Enabled := false;
-  Form1.DriveComboBox1.Enabled := true;
-  Form1.DirectoryListBox1.Enabled := true;
-  Form1.FilterComboBox1.Enabled := true;
-  Form1.FileListBox1.Enabled := true;
+  if (Button_Close.Caption = 'Close') then begin
+    StatusBar.SimpleText := 'Cleaning up ...';
+    EnablePBFields(false);
+    PB_List.Enabled := false;
+    PB_OrderGroup.Enabled := false;
+    PB_OrderFL.Enabled := false;
+    PB_OrderLF.Enabled := false;
+    PB_List.Clear;
+    PB_Name.Text := '';
+    PB_Home.Text := '';
+    PB_Work.Text := '';
+    PB_Mobile.Text := '';
+    PB_Fax.Text := '';
+    PB_Other.Text := '';
+    PB_Email.Text := '';
+    PB_Title.Text := '';
+    PB_Company.Text := '';
+    PB_PhotoAtt.Checked := false;
+    PB_Photo.Visible := false;
+    DeleteTemp;
+    SetLength(PhoneBook, 0);
+    StatusBar.SimpleText := StatusBar.SimpleText + ' done.';
+    Button_Close.Enabled := false;
+    Button_SaveAs.Enabled := false;
+    Button_Save.Enabled := false;
+    if (FileExists(DirectoryListBox1.Directory+'\'+FileName.Text)) AND (Pos('*',FileName.Text)=0) then Button_Load.Enabled := true else Button_Load.Enabled := false;
+    Form1.DriveComboBox1.Enabled := true;
+    Form1.DirectoryListBox1.Enabled := true;
+    Form1.FilterComboBox1.Enabled := true;
+    Form1.FileListBox1.Enabled := true;
+  end else if Button_Close.Caption = 'Cancel' then begin
+    Button_SaveAs.Enabled := true;
+    Button_Close.Caption := 'Close';
+    FileName.Text := ExtractFileName(BackupFileName);
+    FileName.Enabled := false;
+  end;
 end;
 
 procedure TForm1.DBG_ShowEntryClick(Sender: TObject);
@@ -615,6 +754,26 @@ begin
   Form1.DBG_EntryName.Text := PB[i].Name;
   Form1.DBG_Entry.Text := PB[i].Value;
   Form1.DBG_LastEntry.Checked := PB[i].LastOfGroup;
+end;
+
+procedure TForm1.Button_SaveClick(Sender: TObject);
+begin
+  ShowMessage('Not yet supported.');
+  if (Button_Close.Caption = 'Cancel') then begin
+    Button_Close.Caption := 'Close';
+    FileName.Enabled := false;
+    BackupFileName := DirectoryListBox1.Directory+'\'+FileName.Text;
+    Button_SaveAs.Enabled := true;
+  end;
+  AssignFile(f, BackupFileName);
+end;
+
+procedure TForm1.Button_SaveAsClick(Sender: TObject);
+begin
+  Button_SaveAs.Enabled := false;
+  Button_Close.Caption := 'Cancel';
+  FileName.Enabled := true;
+  FileName.SetFocus;
 end;
 
 end.

@@ -27,6 +27,29 @@ object Form1: TForm1
       'C:\Documents and Settings\Administrator\My Documents\Development' +
       '\Delphi\PBE'
   end
+  object ProgBarText: TLabel
+    Left = 336
+    Top = 240
+    Width = 257
+    Height = 21
+    AutoSize = False
+    Font.Charset = DEFAULT_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -13
+    Font.Name = 'MS Sans Serif'
+    Font.Style = [fsBold]
+    ParentFont = False
+    Visible = False
+  end
+  object FileName: TEdit
+    Left = 336
+    Top = 240
+    Width = 257
+    Height = 21
+    Enabled = False
+    TabOrder = 2
+    Text = '*.MS'
+  end
   object PageControl1: TPageControl
     Left = 8
     Top = 272
@@ -371,6 +394,7 @@ object Form1: TForm1
         Top = 36
         Width = 48
         Height = 13
+        Alignment = taRightJustify
         Caption = 'Recipient:'
       end
       object SM_List: TListBox
@@ -444,9 +468,25 @@ object Form1: TForm1
         Enabled = False
         TabOrder = 7
       end
+      object SM_RadioSent: TRadioButton
+        Left = 200
+        Top = 56
+        Width = 49
+        Height = 17
+        Caption = 'Sent'
+        TabOrder = 9
+      end
+      object SM_RadioRecvd: TRadioButton
+        Left = 296
+        Top = 56
+        Width = 73
+        Height = 17
+        Caption = 'Received'
+        TabOrder = 10
+      end
       object SM_Message: TMemo
         Left = 136
-        Top = 56
+        Top = 72
         Width = 233
         Height = 137
         Enabled = False
@@ -463,8 +503,12 @@ object Form1: TForm1
         Top = 8
         Width = 769
         Height = 273
-        ActivePage = TabSheet7
+        ActivePage = TabSheet6
         TabOrder = 0
+        object TabSheet6: TTabSheet
+          Caption = 'Data Accounts'
+          ImageIndex = 1
+        end
         object TabSheet5: TTabSheet
           Caption = 'WAP Profiles'
           object WP_List: TListBox
@@ -475,10 +519,6 @@ object Form1: TForm1
             ItemHeight = 13
             TabOrder = 0
           end
-        end
-        object TabSheet6: TTabSheet
-          Caption = 'Data Accounts'
-          ImageIndex = 1
         end
         object TabSheet7: TTabSheet
           Caption = 'Bookmarks'
@@ -538,7 +578,7 @@ object Form1: TForm1
             TabOrder = 4
           end
           object BM_NewButton: TButton
-            Left = 336
+            Left = 256
             Top = 152
             Width = 75
             Height = 25
@@ -552,6 +592,14 @@ object Form1: TForm1
             Height = 25
             Caption = 'Delete!'
             TabOrder = 6
+          end
+          object BM_ButtonSave: TButton
+            Left = 336
+            Top = 152
+            Width = 75
+            Height = 25
+            Caption = 'Save'
+            TabOrder = 7
           end
         end
         object TabSheet8: TTabSheet
@@ -600,6 +648,55 @@ object Form1: TForm1
         object TabSheet11: TTabSheet
           Caption = 'My Shortcuts'
           ImageIndex = 6
+          object SC_List: TListBox
+            Left = 8
+            Top = 8
+            Width = 425
+            Height = 225
+            ItemHeight = 13
+            TabOrder = 0
+          end
+          object SC_ButtonUp: TButton
+            Left = 432
+            Top = 200
+            Width = 49
+            Height = 17
+            Caption = 'Up'
+            TabOrder = 1
+          end
+          object SC_ButtonDown: TButton
+            Left = 432
+            Top = 216
+            Width = 49
+            Height = 17
+            Caption = 'Down'
+            TabOrder = 2
+          end
+          object SC_AvailSCs: TComboBox
+            Left = 440
+            Top = 8
+            Width = 313
+            Height = 21
+            ItemHeight = 13
+            TabOrder = 3
+            Text = 'SC_AvailSCs'
+          end
+          object SC_ButtonAdd: TButton
+            Left = 440
+            Top = 32
+            Width = 75
+            Height = 25
+            Caption = '< Add'
+            TabOrder = 4
+          end
+          object SC_ButtonDel: TButton
+            Left = 440
+            Top = 96
+            Width = 75
+            Height = 25
+            Caption = 'Delete!'
+            TabOrder = 5
+          end
         end
       end
     end
@@ -707,15 +804,6 @@ object Form1: TForm1
     SimplePanel = True
     SimpleText = 'Select a PhoneBackup file (*.MS)'
   end
-  object FileName: TEdit
-    Left = 336
-    Top = 240
-    Width = 257
-    Height = 21
-    Enabled = False
-    TabOrder = 2
-    Text = '*.MS'
-  end
   object FileListBox1: TFileListBox
     Left = 336
     Top = 24
@@ -771,9 +859,10 @@ object Form1: TForm1
     Top = 240
     Width = 49
     Height = 20
-    Caption = 'Save'
+    Caption = 'Save!'
     Enabled = False
     TabOrder = 8
+    OnClick = Button_SaveClick
   end
   object ProgressBar: TProgressBar
     Left = 336
@@ -791,6 +880,7 @@ object Form1: TForm1
     Caption = 'Save As'
     Enabled = False
     TabOrder = 10
+    OnClick = Button_SaveAsClick
   end
   object Button_Close: TButton
     Left = 769
