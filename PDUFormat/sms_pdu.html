@@ -1,0 +1,696 @@
+<head><title>SMS and PDU format</title>
+
+<script language="javascript">
+
+/* Script written by Swen-Peter Ekkebus, edited by Ing. Milan Chudik
+ * ekkebus[at]cs.utwente.nl
+ * Feel free to use it, please do'nt forget to link to the source ;)
+ * Version 1.4
+ * 
+ * Official BPS develop tool
+ *
+ * (c) BPS & co, 2003
+ */
+
+
+//Array with "The 7 bit defaultalphabet"
+sevenbitdefault = new Array('@', '£', '$', '¥', 'è', 'é', 'ù', 'ì', 'ò', 'Ç', '\n', 'Ø', 'ø', '\r','Å', 'å','\u0394', '_', '\u03a6', '\u0393', '\u039b', '\u03a9', '\u03a0','\u03a8', '\u03a3', '\u0398', '\u039e','€', 'Æ', 'æ', 'ß', 'É', ' ', '!', '"', '#', '¤', '%', '&', '\'', '(', ')','*', '+', ',', '-', '.', '/', '0', '1', '2', '3', '4', '5', '6', '7','8', '9', ':', ';', '<', '=', '>', '?', '¡', 'A', 'B', 'C', 'D', 'E','F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S','T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'Ä', 'Ö', 'Ñ', 'Ü', '§', '¿', 'a','b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o','p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', 'ä', 'ö', 'ñ','ü', 'à');
+
+// Variable that stores the information to show the user the calculation of the translation
+var calculation = "";
+
+maxkeys = 160;
+alerted = false;
+
+// function te convert a bit string into a integer
+function binToInt(x)//sp
+{
+	var total = 0;	
+	var power = parseInt(x.length)-1;	
+
+	for(var i=0;i<x.length;i++)
+	{
+		if(x.charAt(i) == '1')
+		{
+		 total = total +Math.pow(2,power);
+		}
+		power --;
+	}
+	return total;
+}
+
+// function to convert a integer into a bit String
+function intToBin(x,size) //sp
+{
+	var base = 2;
+	var num = parseInt(x);
+	var bin = num.toString(base);
+	for(var i=bin.length;i<size;i++)
+	{
+		bin = "0" + bin;
+	}
+	return bin;
+}
+
+// function to convert a Hexnumber into a 10base number
+function HexToNum(numberS) 
+{
+	var tens = MakeNum(numberS.substring(0,1));
+	
+	var ones = 0;
+	if(numberS.length > 1) // means two characters entered
+		ones=MakeNum(numberS.substring(1,2));
+	if(ones == 'X') 
+	{
+		return "00";
+	}
+	return  (tens * 16) + (ones * 1);
+}
+
+// helper function for HexToNum
+function MakeNum(str) 
+{
+	if((str >= 0) && (str <= 9))
+		return str;
+	switch(str.toUpperCase()) 
+	{
+		case "A": return 10;
+		case "B": return 11;
+		case "C": return 12;
+		case "D": return 13;
+		case "E": return 14;
+		case "F": return 15;
+		default:  alert('Only insert Hex values!!');
+		return 'X';
+   	}
+}
+
+//function to convert integer to HEx
+
+function intToHex(i) //sp
+ {
+  var sHex = "0123456789ABCDEF";	
+  h = ""; 
+  i = parseInt(i);	
+  for(j = 0; j <= 3; j++) {
+    h += sHex.charAt((i >> (j * 8 + 4)) & 0x0F) +
+         sHex.charAt((i >> (j * 8)) & 0x0F);
+  }
+  return h.substring(0,2);
+}
+
+function getSevenBit(character) //sp
+{
+	for(var i=0;i<sevenbitdefault.length;i++){
+		if(sevenbitdefault[i] == character){
+			return i;
+		}
+	}
+	alert("No 7 bit char!");
+	return 0;
+}
+
+// function to convert semioctets to a string
+function semiOctetToString(inp) //sp
+{
+	var out = "";	
+	for(var i=0;i<inp.length;i=i+2)
+	{
+	  	var temp = inp.substring(i,i+2);	
+		out = out + temp.charAt(1) + temp.charAt(0);
+	}
+
+	return out;
+}
+
+//Main function to translate the input to a "human redable" string
+function getUserMessage(input)
+{
+	var byteString = "";
+	octetArray = new Array();
+	restArray = new Array();
+	septetsArray = new Array();
+	var s=1;
+	var count = 0;
+	var smsMessage = "";	
+	
+	var calculation1 = "<table border=1 ><tr><td align=center width=75><b>Hex</b></td>";
+	var calculation2 = "<tr><td align=center width=75> <b>&nbsp;&nbsp;&nbsp;Octets&nbsp;&nbsp;&nbsp;</b></td>";
+	var calculation3 = "<table border=1 ><tr><td align=center width=75><b>septets</b></td>";
+	var calculation4 = "<tr><td align=center width=75><b>Character</b></td>";
+	calculation = "";
+
+	//Cut the input string into pieces of2 (just get the hex octets)
+	for(var i=0;i<input.length;i=i+2)
+	{
+		var hex = input.substring(i,i+2);
+		byteString = byteString + intToBin(HexToNum(hex),8);
+		if((i%14 == 0 && i!=0))
+			calculation1 = calculation1 + "<td align=center width=75>+++++++</td>";
+		calculation1 = calculation1 + "<td align=center width=75>" + hex + "</td>"; 
+		 
+	}
+	
+	// make two array's these are nessesery to
+	for(var i=0;i<byteString.length;i=i+8)
+	{
+		octetArray[count] = byteString.substring(i,i+8);
+		restArray[count] = octetArray[count].substring(0,(s%8));
+		septetsArray[count] = octetArray[count].substring((s%8),8);
+		if((i%56 == 0 && i!=0))
+			calculation2 = calculation2 + "<td align=center width=75></td>";
+		calculation2 = calculation2 + "<td align=center width=75><span style='background-color: #FFFF00'>" + restArray[count] + "</span>"+ septetsArray[count]+"</td>";
+		
+
+		s++;
+        	count++;
+		if(s == 8)
+			s = 1;
+	}
+	
+	// put the right parts of the array's thogether to make he sectets
+	for(var i=0;i<restArray.length;i++)
+	{
+		
+		if(i%7 == 0)
+		{	
+			if(i != 0)
+			{
+				smsMessage = smsMessage + sevenbitdefault[binToInt(restArray[i-1])];
+				calculation3 = calculation3 + "<td align=center width=75><span style='background-color: #FFFF00'>&nbsp;" + restArray[i-1] + "</span>&nbsp;</td>";
+				calculation4 = calculation4 + "<td align=center width=75>&nbsp;" + sevenbitdefault[binToInt(restArray[i-1])] + "&nbsp;</td>"; 
+			}
+			smsMessage = smsMessage + sevenbitdefault[binToInt(septetsArray[i])];
+			calculation3 = calculation3 + "<td align=center width=75>&nbsp;" +septetsArray[i] + "&nbsp;</td>";
+			calculation4 = calculation4 + "<td align=center width=75>&nbsp;" + sevenbitdefault[binToInt(septetsArray[i])] + "&nbsp;</td>";
+		}
+		else
+		{
+			smsMessage = smsMessage +  sevenbitdefault[binToInt(septetsArray[i]+restArray[i-1])];
+			calculation3 = calculation3 + "<td align=center width=75>&nbsp;" +septetsArray[i]+ "<span style='background-color: #FFFF00'>" +restArray[i-1] + "&nbsp;</span>" + "</td>"
+			calculation4 = calculation4 + "<td align=center width=75>&nbsp;" + sevenbitdefault[binToInt(septetsArray[i]+restArray[i-1])] + "&nbsp;</td>";
+		}
+	
+	}
+	
+	//Put all the calculation info together	
+	calculation =  "Conversion of 8-bit octets to 7-bit default alphabet<br><br>"+calculation1 + "</tr>" + calculation2 + "</tr></table>" + calculation3 + "</tr>"+ calculation4 + "</tr></table>";
+
+	return smsMessage;
+}
+
+//Function to build a popup window with the calculation a innformation
+function showCalculation() 
+{
+  	if(calculation.length != 0)
+	{
+  	myWin=open('','','width=600,height=200,resizable=yes,location=no,directories=no,toolbar=no,status=no,scrollbars=yes');
+  	var b='<html><head><title>Calculation</title></head><body><center>'+calculation+'</center></body></html>';
+  	a=myWin.document;
+  	a.open();
+  	a.write(b);
+  	a.close();
+	}	
+}
+
+// Function to get SMSmeta info information from PDU String
+function getPDUMetaInfo(inp)
+{
+	var PDUString = inp;
+	var start = 0;
+
+	var SMSC_lengthInfo = HexToNum(PDUString.substring(0,2));
+	var SMSC_info = PDUString.substring(2,2+(SMSC_lengthInfo*2));
+	var SMSC_TypeOfAddress = SMSC_info.substring(0,2);
+	var SMSC_Number = SMSC_info.substring(2,2+(SMSC_lengthInfo*2));
+        
+	SMSC_Number = semiOctetToString(SMSC_Number);
+       
+	// if the length is odd remove the trailing  F
+	if(SMSC_Number[SMSC_Number.length-1] == 'F' || SMSC_Number[SMSC_Number.length-1] == 'f')
+		SMSC_Number = SMSC_Number.substring(0,SMSC_Number.length-1);
+		
+	var start_SMSDeleivery = (SMSC_lengthInfo*2)+2;
+
+	start = start_SMSDeleivery;
+	var firstOctet_SMSDeliver = PDUString.substr(start,2);
+	
+	// length in decimals
+	start = start + 2;
+	var sender_addressLength = HexToNum(PDUString.substr(start,2));
+	
+	if(sender_addressLength%2 != 0) sender_addressLength +=1; //v pripade ak je neparna dlzka, nech vezme aj posledny znak
+	
+	start = start + 2;
+	var sender_typeOfAddress = PDUString.substr(start,2);
+	
+	start = start + 2
+	var sender_number = semiOctetToString(PDUString.substring(start,start+sender_addressLength));
+        
+	if(sender_number[sender_number.length-1] == 'F' || sender_number[sender_number.length-1] == 'f' )
+		sender_number =	sender_number.substring(0,sender_number.length-1);
+
+	
+	
+        start +=sender_addressLength;
+	var tp_PID = PDUString.substr(start,2);
+        
+        start +=2;
+        var tp_DCS = PDUString.substr(start,2);
+        var tp_DCS_desc = tpDCSMeaning(tp_DCS);  
+        
+        start +=2;
+	var timeStamp = semiOctetToString(PDUString.substr(start,14));
+        
+	
+	// get date	
+	var year = timeStamp.substring(0,2);
+	var month = timeStamp.substring(2,4);
+	var day = timeStamp.substring(4,6);
+	var hours = timeStamp.substring(6,8);
+	var minutes = timeStamp.substring(8,10);
+	var seconds = timeStamp.substring(10,12);
+	
+	timeStamp = day + "-" + month + "-" + year + " " + hours + ":" + minutes + ":" + seconds;
+	start +=14;
+	var messageLength = HexToNum(PDUString.substr(start,2));
+    
+        start += 2;
+        
+    	var userData = getUserMessage(PDUString.substr(start,PDUString.length-start));
+        
+	var out =  "SMSC # : "+SMSC_Number+"\nSender : "+sender_number+"\nTimeStamp : "+timeStamp+"\nTP_PID:"+tp_PID+"\nTP_DCS:"+tp_DCS+"\nTP_DCS-popis:"+tp_DCS_desc+"\nMessage length : "+messageLength+"\n\n"+userData;
+	
+	return out;
+}
+
+// function that print the default alphabet to a String
+function printDefaultAlphabet()
+{
+	var out = "";
+	out = "<table border=1 cellpadding=0 cellspacing=0 width=300>";
+	out = out + "<tr><td align=center>#</td><td align=center>character</td><td align=center>ASCII Code</td><td align=center>bits</td></tr>";
+	for(var i=0;i<sevenbitdefault.length;i++)
+	{
+		out = out + "<tr><td align=center>"+ i + "</td><td align=center>" +sevenbitdefault[i] + "</td><td align=center>" + sevenbitdefault[i].charCodeAt(0) + "</td><td align=center>"+intToBin(sevenbitdefault[i].charCodeAt(0),8)+ "</td></tr>";
+		
+	}
+	out = out +"</tabel>";
+	return out;	
+} 
+
+// function to make a new window
+function show(title,text) {
+  myWin=open('','','width=350,height=500,resizable=no,location=no,directories=no,toolbar=no,status=no,scrollbars=yes');
+
+  var b='<html><head><title>'+title+'</title></head><body><center>'+ text +'</center></body></html>';
+  a=myWin.document;
+  a.open();
+  a.write(b);
+  a.close();
+}
+
+function stringToPDU(inpString,phoneNumber,smscNumber) //sp
+{
+
+	var octetFirst = "";
+	var octetSecond = ""; 
+	var output = "";
+
+	//Make header
+	var SMSC_INFO_LENGTH = 0;
+	var SMSC_NUMBER_FORMAT = "91"; //international
+	if(smscNumber.length%2 != 0){
+		//add taining F
+		smscNumber += "F";
+	}	
+	
+	var SMSC = semiOctetToString(smscNumber);
+	SMSC_INFO_LENGTH = ((SMSC_NUMBER_FORMAT + ""+ SMSC).length)/2;
+	
+	if(SMSC_INFO_LENGTH < 10){
+		SMSC_INFO_LENGTH = "0" + SMSC_INFO_LENGTH;
+	}
+         
+	var firstOctet = "1100";
+         
+	var REIVER_NUMBER_LENGTH = intToHex(phoneNumber.length);
+
+	if(phoneNumber.length%2 != 0){
+		//add taining F
+		phoneNumber += "F";
+	}
+	var REIVER_NUMBER = semiOctetToString(phoneNumber);
+	var REIVER_NUMBER_FORMAT = "91";
+	var PROTO_ID = "00";
+	var DATA_ENCODING = "00";
+	var VALID_PERIOD = "AA";
+	var userDataSize = intToHex(inpString.length);
+
+	var header = SMSC_INFO_LENGTH + SMSC_NUMBER_FORMAT + SMSC + firstOctet + REIVER_NUMBER_LENGTH + REIVER_NUMBER_FORMAT  + REIVER_NUMBER +  PROTO_ID + DATA_ENCODING + VALID_PERIOD + userDataSize;
+
+
+
+
+
+	for(var i=0;i<=inpString.length;i++)
+	{
+		if(i==inpString.length)
+		{	//als laatse teken is 
+			output = output + "" + (intToHex(binToInt(octetSecond)));
+			break;
+		}
+		var current = intToBin(getSevenBit(inpString.charAt(i)),7);
+	
+		var currentOctet;
+		if(i!=0 && i%8!=0){
+			octetFirst = current.substring(7-(i)%8);
+			currentOctet = octetFirst + octetSecond;	//put octet parts together
+		
+			output = output + "" + (intToHex(binToInt(currentOctet)));
+			octetSecond = current.substring(0,7-(i)%8);	//set net second octet
+		}
+		else{
+			octetSecond = current.substring(0,7-(i)%8);
+		}	
+}
+	var PDU = header + output;
+	var AT = "AT+CMGW=" + PDU.length;
+	//CMGW
+	return AT + "\n" + PDU;
+}
+
+function change (what)
+{
+   var keysSoFar = what.value.length;
+
+   if (keysSoFar > maxkeys)
+   {
+      if (!alerted) alert ('Max length '+ maxkeys + '!');
+      what.value = what.value.substring (0, maxkeys); //chop
+      alerted = true;
+      keysSoFar = maxkeys;
+   }
+   window.status = "Characters left : " + (maxkeys - keysSoFar);
+}
+
+function tpDCSMeaning(tp_DCS)
+{
+	var tp_DCS_desc=tp_DCS;
+        var pomDCS = HexToNum(tp_DCS); 	
+        switch(pomDCS & 192)
+	{
+		case 0: if(pomDCS & 32) tp_DCS_desc="Text is compressed\n";
+			else  tp_DCS_desc="Text is uncompressed\n";
+			if(pomDCS & 16) tp_DCS_desc+="no class\n";
+			else
+			{
+			  	tp_DCS_desc+="class:";	
+
+		  		switch(pomDCS & 3)
+				{
+					case 0:  tp_DCS_desc+="0\n";break;
+					case 1:  tp_DCS_desc+="1\n";break;
+					case 2:  tp_DCS_desc+="2\n";break;
+					case 3: tp_DCS_desc+="3\n";break;
+				}	
+			}
+                        tp_DCS_desc+="Alphabet:";
+			switch(pomDCS & 12)
+			{
+				case 0:  tp_DCS_desc+="Default alphabet\n";break;
+				case 4:  tp_DCS_desc+="8bit\n";break;
+				case 8:  tp_DCS_desc+="UCS2(16)bit\n";break;
+				case 12: tp_DCS_desc+="Reserved\n";break;
+			}
+			break;
+                case 64: tp_DCS_desc ="Reserved coding group";break;
+                case 128: tp_DCS_desc ="Reserved coding group";break;
+		case 192: tp_DCS_desc ="Message waiting group";break;
+		      	
+	}
+
+	//alert(tp_DCS.valueOf());
+         
+        return(tp_DCS_desc); 
+}
+
+</script>
+
+<meta content="MSHTML 6.00.2800.1170" name="GENERATOR"></head>
+
+<body><big>Contents</big><br>
+<ul>
+  <li><a href="#SMS">SMS 
+  format</a> 
+  </li><li><a href="#PDU">PDU 
+  format</a> 
+  </li><li><a href="#PDU_CONVERTER">PDU 
+  converter</a>
+  </li><li><a href="#STRING_CONVERTER">String
+  converter</a> 
+  </li><li><a href="#LINKS">Links</a> 
+
+  </li><li><a href="#References">References</a> 
+  </li></ul>
+<p><a name="sms"><big>SMS</big></a> (Short Message Service) is specified by the 
+ETSI (standards GSM 03.40<sub>1</sub> and 03.38<sub>2 </sub>). It can contain up 
+to 160 characters, when each character is written according the <i>7-bits GSM 
+default alphabet</i>.[ <a href="javascript:show('7%20bits%20default%20tabel',printDefaultAlphabet());">7 
+bits default tabel</a> ]<br><br>Next to a message the SMS containt also some 
+meta-data, for example<br>&nbsp;- Info about the senders ( Service center 
+number, sender number)&nbsp;<br>&nbsp;- Protocol information&nbsp; (Protocol 
+identifier, Data coding scheme)<br>&nbsp;- Time stamp&nbsp;<br><br>There are two 
+way to recieve and send SMS messages <sub>a</sub>, PDU (protocol discription 
+unit) and Text mode. In this document we focus on PDU mode.<br><br><a name="PDU"><big>PDU</big></a> format can be used on any encoding. To explain you 
+the SMS PDU encoding we use an example: 
+</p><p>07911326040000F0040B911346610089F60000208062917314080CC8F71D14969741F977FD07</p>The 
+above PDU string contains the message "How are you?" and was read from a Siemens 
+C35i mobile phone.<br>The string is build from <i>hexadecimal-octets</i> and 
+<i>semi decimal-octets.</i> As mentioned before, the SMS contains some meta-data 
+about him self.<br>We explain it using the example above:<br><br>
+<center>
+<table cellspacing="0" cellpadding="0" width="713" border="1">
+  <tbody>
+  <tr>
+    <td align="center" width="138"><b>Octet(s)</b></td>
+    <td align="center" width="283"><b>Description</b></td>
+    <td align="center" width="151"><b>format</b></td>
+    <td align="center" width="133"><b>In this example</b></td></tr>
+  <tr>
+    <td width="138">07</td>
+    <td width="283">Length of the SMSC information</td>
+    <td align="center" width="151">
+      <p align="center">hex-octet</p></td>
+    <td align="center" width="133">
+      <p align="center">7 octets</p></td></tr>
+  <tr>
+    <td width="138">91</td>
+    <td width="283">Type of address of SMSC</td>
+    <td align="center" width="151">hex-octet</td>
+    <td align="center" width="133">internation format</td></tr>
+  <tr>
+    <td width="138">13 26 04 00 00 F0</td>
+    <td width="283">SMSC number</td>
+    <td align="center" width="151">decimal semi-octets <sub>b</sub></td>
+    <td align="center" width="133">31624000000</td></tr>
+  <tr>
+    <td width="138">04</td>
+    <td width="283">First octet of this SMS-DELIVER message.</td>
+    <td align="center" width="151">hex-octet</td>
+    <td align="center" width="133">TP-MMS</td></tr>
+  <tr>
+    <td width="138">0B</td>
+    <td width="283">Lenght of the sender address</td>
+    <td align="center" width="151">hex-octet</td>
+    <td align="center" width="133">11 (decimal)</td></tr>
+  <tr>
+    <td width="138">91</td>
+    <td width="283">Type of address of the sender number</td>
+    <td align="center" width="151">hex-octet</td>
+    <td align="center" width="133">...</td></tr>
+  <tr>
+    <td width="138">13 46 61 00 89 F6</td>
+    <td width="283">Sender number</td>
+    <td align="center" width="151">decimal semi-octets</td>
+    <td align="center" width="133">31641600986</td></tr>
+  <tr>
+    <td width="138">00</td>
+    <td width="283">Protocol identifier</td>
+    <td align="center" width="151">hex-octets</td>
+    <td align="center" width="133">...</td></tr>
+  <tr>
+    <td width="138">00</td>
+    <td width="283">Data encoding scheme</td>
+    <td align="center" width="151">hex-octets</td>
+    <td align="center" width="133">...</td></tr>
+  <tr>
+    <td width="138">20 80 62 91 73 14 08</td>
+    <td width="283">Time stamp <sub>c</sub></td>
+    <td align="center" width="151">decimal semi-octets</td>
+    <td align="center" width="133">06-08-02 29:17:31</td></tr>
+  <tr>
+    <td width="138">0C</td>
+    <td width="283">Length of User data (SMS message)</td>
+    <td align="center" width="151">hex-octets</td>
+    <td align="center" width="133">12 (decimal)</td></tr>
+  <tr>
+    <td width="138">C8 F7 1D 14 96 97 41 F9 77 FD 07</td>
+    <td width="283">User data</td>
+    <td align="center" width="151">8-bit octets respresenting 7-bit data</td>
+    <td align="center" width="133">How are you?</td></tr></tbody></table>
+<p><small>Tabel 1.<br></small></p></center><br><br><a name="PDU_CONVERTER"><big>PDU 
+converter</big></a> is an online PDU string analyser.<br><p></p>
+<center>
+<form name="pduToStringForm">
+<table cellspacing="0" cellpadding="0" width="500" border="0">
+  <tbody>
+  <tr>
+    <td align="center">Hexadecimal PDU Message 
+      <p></p></td>
+    <td></td>
+    <td align="center">7-bit PDU Message (readable) 
+      <p></p></td></tr>
+  <tr>
+    <td valign="top" align="center" width="200"><textarea name="smsText" rows="10" wrap="VIRTUAL">07911326040000F0040B911346610089F60000208062917314080CC8F71D14969741F977FD07</textarea> 
+    </td>
+    <td width="50"></td>
+    <td valign="top" width="250"><textarea name="smsOut" rows="10" wrap="VIRTUAL"></textarea></td></tr>
+  <tr>
+    <td>&nbsp;</td>
+    <td>&nbsp;</td>
+    <td>&nbsp;</td></tr>
+  <tr>
+    <td align="center"><input onclick="smsOut.value= getPDUMetaInfo(document.pduToStringForm.smsText.value);" type="button" size="11" value="  Convert  " name="checkButton"></td>
+    <td></td>
+    <td align="center"><small><a href="javascript:showCalculation();">Show User 
+      data translation</a></small></td></tr></tbody></table></form></center>
+<form name="stringToPduForm">
+<p><a name="STRING_CONVERTER"><big>String 
+converter</big></a> is an online String to PDU analyser.<br></p>     
+<center>
+<table cellspacing="0" cellpadding="0" width="500" border="0">
+  <tbody>
+  <tr>
+    <td align="center">String sms message
+      <p></p>
+    </td>
+    <td></td>
+    <td align="center">Hexadecimal PDU Message
+      <p></p>
+    </td>
+  </tr>
+  <tr>
+    <td valign="top" align="center" width="200">
+	
+	
+	<table width="80%" border="0" cellpadding="0" cellspacing="8">
+	<tbody><tr>
+		<td>SMSC</td>
+		<td><input type="text" name="smscNumber" size="15" value="31653131313"></td>
+	</tr>
+	<tr>
+		<td>Receiver</td>
+		<td><input type="text" name="phoneNumber" size="15" value="31612345678"></td>
+	</tr>
+</tbody></table>
+	<textarea name="smsText" rows="6" wrap="VIRTUAL" onchange="change(this)" onkeyup="change(this)">How are you?</textarea> 
+    </td>
+    <td width="50"></td>
+    <td valign="top" width="250">
+
+	<textarea name="pduOut" rows="10" wrap="VIRTUAL"></textarea>
+	
+    </td></tr>
+  <tr>
+    <td>&nbsp;</td>
+    <td>&nbsp;</td>
+    <td>&nbsp;</td>
+  </tr>
+  <tr>
+    <td align="center"><input onclick="pduOut.value= stringToPDU(document.stringToPduForm.smsText.value,document.stringToPduForm.phoneNumber.value,document.stringToPduForm.smscNumber.value);" type="button" size="11" value="  Convert  " name="stringButton"></td>
+    <td></td>
+    <td align="center"></td></tr></tbody>
+</table>
+
+
+</center>
+<p><big><a name="LINKS">Links</a></big></p><a href="http://www.etsi.org/" target="_blank">The European Telecommunications Standards Institute 
+(ETSI)</a><br><a href="http://www.dreamfabric.com/sms/" target="_blank">Lars 
+Pettersson about PDU mode</a> 
+<p><b>Notes</b> </p>
+<table cellspacing="0" cellpadding="0" width="600" border="0">
+  <tbody>
+  <tr>
+    <td valign="top" width="50">a.</td>
+    <td width="550">To see which modes your mobile supports, you can use the 
+      "AT+CMGF=?" command.<br>You will get a response with the supported SMS 
+      formats<br>&nbsp;0: PDU mode, 1: Text mode </td></tr>
+  <tr>
+    <td valign="top" width="50">b.</td>
+    <td width="550">To obtain data from a string that is written as a 
+      semi-octet, you have to swap the semi-octet string. If the length of a 
+      semi-octet string is odd, you have to add an extra "F" to make it even, so 
+      that you get a proper octet string.<br><i>Example</i>:<br>&nbsp;"13 46 61 
+      00 89 F6" becomes "31 64 16 00 98 6F" </td></tr>
+  <tr>
+    <td valign="top" width="50">c.</td>
+    <td width="550">Time stamp is represented in semi-octets (See note b). So 
+      "20 80 62 91 73 14 08" becomes "02 08 26 02 29 17 31 80". The first 6 
+      characters represent the date, the next 6 characters represent the time, 
+      the last 2 characters represent the time-zone related to the GMT. 
+  </td></tr></tbody></table>
+<p><big><a name="References">References</a></big></p>
+<table cellspacing="0" cellpadding="0" width="600" border="0">
+  <tbody>
+  <tr>
+    <td valign="top" width="50">1.</td>
+    <td width="550">Digital cellular telecommunications system (Phase 2+); 
+      Technical realization of the Short Message Service (SMS)Point-to-Point 
+      (PP) (3GPP TS 03.40 version 7.5.0 Release 1998), ETSI TS 100 901 V7.5.0 
+      (2001-12) </td></tr>
+  <tr>
+    <td valign="top" width="50">2.</td>
+    <td width="550">Digital cellular telecommunications system (Phase 2+); 
+      Alphabets and language-specific information (GSM 03.38 version 7.2.0 
+      Release 1998), ETSI TS 100 900 V7.2.0 (1999-07) </td></tr></tbody></table>
+<p><small>Written by Swen-Peter Ekkebus, v1.0 august 2002 | v1.2 may 2003 | v1.4 august 2003 [Milan Chudik], 
+ekkebus[at]cs.utwente.nl  </small> </p></form></body></html>
+
+<!-- 0791249150033330240C9124917028825700003080103150110019C4F0BAAE2EB741D66013642FB3DB69D05AFE9FBBCB21 -->
+<p>
+
+<a target="_top" href="http://t.extreme-dm.com/?login=smspdu">
+<img src="http://t1.extreme-dm.com/i.gif" height=9
+border=0 width=10 alt=""></a><script language="javascript1.2"><!--
+EXs=screen;EXw=EXs.width;navigator.appName!="Netscape"?
+EXb=EXs.colorDepth:EXb=EXs.pixelDepth;//-->
+</script><script language="javascript"><!--
+EXd=document;EXw?"":EXw="na";EXb?"":EXb="na";
+EXd.write("<img src=\"http://t0.extreme-dm.com",
+"/c.g?tag=smspdu&j=y&srw="+EXw+"&srb="+EXb+"&",
+"l="+escape(EXd.referrer)+"\" height=1 width=1>");//-->
+</script><noscript><img height=1 width=1 alt=""
+src="http://t0.extreme-dm.com/c.g?tag=smspdu&j=n"></noscript>
+
+<!-- Start Topstat XL tellercode -->
+<script language="JavaScript" src="http://xl.topstat.com/nl/xl/insert.js"></script>
+<script language="JavaScript">
+br=navigator.appName;
+var code="http://xl.topstat.com/nl/xl/cnt.php?account=2147484810"
+code+=("&rf="+escape(document.referrer))
+</script><script language="JavaScript1.2">
+br!="Netscape"?srb=screen.colorDepth:srb=screen.pixelDepth;
+code+=("&r="+screen.width)
+code+=("&k="+srb)
+document.write("<a link='Topstat Statistieken' href='http://xl.topstat.com/nl/xl/show.php?account=2147484810' target='_blank'>");
+document.write("<IMG SRC='"+code+"' HEIGHT='10' WIDTH='10' border='0' alt='Website statistieken'>");
+document.write("</a>");
+</script>
+<noscript>
+<a link='Topstat Statistieken' href="http://xl.topstat.com/nl/xl/show.php?account=2147484810" target="_blank"><img 
+src="http://xl.topstat.com/nl/xl/cnt.php?account=2147484810" width="20" height="20" border="0"></a>
+</noscript>
+<!-- Eind Topstat XL tellercode -->
+</p>
+</body></html>
