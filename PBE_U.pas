@@ -4,7 +4,7 @@ interface
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  Dialogs, StdCtrls, ComCtrls, ExtCtrls, Jpeg, GIFImage, FileCtrl;
+  Dialogs, StdCtrls, ComCtrls, ExtCtrls, Jpeg, GIFImage, FileCtrl, Spin;
 
 type
   TForm1 = class(TForm)
@@ -58,7 +58,6 @@ type
     Button_Load: TButton;
     Button_Save: TButton;
     SM_List: TListBox;
-    SM_Message: TEdit;
     PB_NewButton: TButton;
     PB_DelButton: TButton;
     SM_SMSC: TEdit;
@@ -92,6 +91,18 @@ type
     ProgressBar: TProgressBar;
     Button_SaveAs: TButton;
     Button_Close: TButton;
+    SM_Message: TMemo;
+    TabSheet12: TTabSheet;
+    DBG_Count: TEdit;
+    Label18: TLabel;
+    DBG_Entry: TMemo;
+    DBG_ShowEntry: TButton;
+    DBG_EntryGroup: TEdit;
+    DBG_EntryName: TEdit;
+    Label19: TLabel;
+    Label20: TLabel;
+    DBG_SelEntry: TSpinEdit;
+    DBG_LastEntry: TCheckBox;
     procedure Button_LoadClick(Sender: TObject);
     procedure PB_ListClick(Sender: TObject);
     procedure PB_OrderFLClick(Sender: TObject);
@@ -101,12 +112,13 @@ type
     procedure FileListBox1Change(Sender: TObject);
     procedure DirectoryListBox1Change(Sender: TObject);
     procedure Button_CloseClick(Sender: TObject);
+    procedure DBG_ShowEntryClick(Sender: TObject);
   private
     { Private declarations }
   public
     { Public declarations }
   end;
-  TPBEntry = record
+  TPhoneEntry = record
     Version: String[5];
     Name: String[30];
     Home, Work, Mobile, Fax, Other: String[80];
@@ -115,17 +127,25 @@ type
     Company: String[30];
     PhotoFile: String[255];
   end;
+  TPBData = record
+    Group: AnsiString;
+    Name: AnsiString;
+    Value: AnsiString;
+    LastOfGroup: Boolean;
+  end;
 
 var
   Form1: TForm1;
   BackupFileName: string;
-  PhoneBook: array[1..999] of TPBEntry;
-  PhoneBookMax: integer;
+  PB: array of TPBData;
+  PhoneBook: array of TPhoneEntry;
   PhoneBookPhotoCount: integer = 0;
   f: Textfile;
 
 
 implementation
+
+const CRLF: string = Chr(13)+Chr(10);
 
 {$R *.dfm}
 
@@ -134,38 +154,36 @@ const qpa: string[16] = '0123456789ABCDEF';
 var i: integer;
     qp: byte;
 begin
-  i := Pos('=',my);
+  Result := my;
+  i := Pos('=',Result);
   while (i>0) do begin
-    my[i] := '?';
-    qp := (Pos(my[i+1],qpa)-1)*16+Pos(my[i+2],qpa)-1;
-    my := Copy(my,1,i-1)+Chr(qp)+Copy(my,i+3,Length(my)-i-2);
-    i := Pos('=',my);
+    Result[i] := '?';
+    qp := (Pos(Result[i+1],qpa)-1)*16+Pos(Result[i+2],qpa)-1;
+    Result := Copy(Result,1,i-1)+Chr(qp)+Copy(Result,i+3,Length(Result)-i-2);
+    i := Pos('=',Result);
   end;
-  DecodeQP := my;
 end;
 
 function B64toBin(my: string): string;
 const b64a: string[64] = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
 var x,i,j: integer;
-    res: string;
 begin
-  res := '';
+  Result := '';
   for i:=1 to 4 do begin
     x := Pos(my[i],b64a)-1;
     if (x>=0) then begin
       j := 32;
       repeat
         if (x DIV j)>0 then begin
-          res := res + '1';
+          Result := Result + '1';
           x := x - j;
-        end else res := res + '0';
+        end else Result := Result + '0';
         j := j DIV 2;
       until (j=0);
     end else begin
-      res := res + '000000';
+      Result := Result + '000000';
     end;
   end;
-  B64toBin := res;
 end;
 
 function BintoASC(my: string): string;
@@ -213,11 +231,11 @@ begin
   i := Pos('PHOTO;ENCODING=BASE64;TYPE=',data);
   if (i>0) then begin
     data := Copy(data,i+27,Length(data)-i-27);
-    i := Pos('<br/><br/>',data);  // Find end of record
+    i := Pos(CRLF+CRLF,data);  // Find end of record
     if (i>0) then begin
       data := Copy(data,1,i-1);
     end;
-    data := StringReplace(data,'<br/>','',[rfReplaceAll]); // Remove all <br/>
+    data := StringReplace(data,CRLF,'',[rfReplaceAll]); // Remove all <br/>
     i := Pos(':',data); // Find Image-Type (first 3 or 4 chars followed by a colon)
     if (i>0) then begin
       t := Copy(data,1,i-1);  // Now contains the Image-Type ('JPEG' or 'GIF')
@@ -248,23 +266,23 @@ var i,j: integer;
     tmp: string;
 begin
   qp := false;
-  s := '<br/>'+field+':';
+  s := CRLF+field+':';
   i := Pos(s, data);
   if (i<=0) then begin
-    s := '<br/>'+field+';ENCODING=QUOTED-PRINTABLE:';
+    s := CRLF+field+';ENCODING=QUOTED-PRINTABLE:';
     i := Pos(s, data);
     if (i>0) then qp := true;
   end;
   if (i>0) then begin
-    j := Pos('<br/>',Copy(data,i+5,Length(data)-i-5))+i+5;
+    j := Pos(CRLF,Copy(data,i+5,Length(data)-i-5))+i+5;
     tmp := Copy(data,i+Length(s),j-i-Length(s)-1);
   end else tmp := '';
   if (qp) then tmp := DecodeQP(tmp);
   FindDataInStream := tmp;
 end;
 
-function ParsePBStream(data: AnsiString): TPBEntry;
-var tmp: TPBEntry;
+function ParsePBStream(data: AnsiString): TPhoneEntry;
+var tmp: TPhoneEntry;
 begin
   tmp.Version := FindDataInStream('VERSION',data);
   tmp.Name := FindDataInStream('N',data);
@@ -302,7 +320,7 @@ var i: integer;
 begin
   Form1.PageControl1.ActivePageIndex := 0;
   Form1.PB_List.Clear;
-  for i:=1 to PhoneBookMax do begin
+  for i:=0 to Length(PhoneBook)-1 do begin
     Form1.PB_List.Items.Add(FormatName(PhoneBook[i].Name));
   end;
 end;
@@ -314,8 +332,8 @@ var i: integer;
 begin
   e := false;
   d := '';
-  if (PhoneBookMax>0) then begin
-    for i:=1 to PhoneBookMax do begin
+  if (Length(PhoneBook)>0) then begin
+    for i:=0 to Length(PhoneBook)-1 do begin
       if (PhoneBook[i].PhotoFile<>'') then begin
         if (d='') then d := ExtractFileDir(PhoneBook[i].PhotoFile);
         if (NOT DeleteFile(PhoneBook[i].PhotoFile)) then e := true;
@@ -327,27 +345,64 @@ begin
 end;
 
 procedure ReadPBintoMem(var InFile: TextFile);
-var i: integer;
-    cl: AnsiString;
+var i, j: integer;
+    cl, gp: AnsiString;
 begin
   Form1.ProgressBar.Min := 0;
   Form1.ProgressBar.Max := FileSize(InFile);
+  Form1.ProgressBar.Position := 0;
   Form1.ProgressBar.Visible := true;
-  i:=1;
+  i:=0;
+  gp := '';
   repeat
     ReadLn(InFile, cl);
-  until Eof(InFile) OR (cl='<Contacts>');
-  ReadLn(InFile, cl);
-  repeat
     Form1.ProgressBar.Position := FilePos(InFile);
     cl := Trim(cl);
-    PhoneBook[i] := ParsePBStream(cl);
+    cl := StringReplace(cl, '<br/>', CRLF, [rfReplaceAll]);
+    if (cl[1]='<') AND (cl[Length(cl)]='>') AND (cl[Length(cl)-1]<>'/') AND (Pos(' ',cl)=0) then begin
+      gp := gp + '>' + Copy(cl, 2, Length(cl)-2);
+    end else if (cl[1]='<') AND (cl[Length(cl)-1]+cl[Length(cl)]='/>') AND (Pos(' ',cl)=0) then begin
+      gp := Copy(gp,1,Length(gp)-Length(cl)+2);
+      // gp := StringReplace(gp, '>' + Copy(cl, 2, Length(cl)-3), '', [rfReplaceAll]);
+      if (i>0) then PB[i-1].LastOfGroup := true;
+    end else if (Pos('value=', LowerCase(cl))>0) AND (Pos('/>', cl)>0) then begin
+      Inc(i);
+      SetLength(PB, i);
+      PB[i-1].Group := gp;
+      PB[i-1].Name := Copy(cl, Pos('<', cl)+1, Pos(' ', cl)-Pos('<', cl)-1);
+      PB[i-1].Value := Copy(cl, Pos('value=', LowerCase(cl))+6, Pos('/>', cl)-Pos('value=', LowerCase(cl))-6);
+      PB[i-1].LastOfGroup := false;
+    end else if (Pos('value=', LowerCase(cl))>0) AND (Pos('/>', cl)=0) then begin
+      Inc(i);
+      SetLength(PB, i);
+      PB[i-1].Group := gp;
+      PB[i-1].Name := Copy(cl, Pos('<', cl)+1, Pos(' ', cl)-Pos('<', cl)-1);
+      PB[i-1].Value := Copy(cl, Pos('value=', LowerCase(cl))+6, Length(cl)-Pos('value=', LowerCase(cl))-6);
+      PB[i-1].LastOfGroup := false;
+    end else if (Pos('value=', LowerCase(cl))=0) AND (Pos('/>', cl)=0) then begin
+      PB[i-1].Value := PB[i-1].Value + cl;
+    end else if (Pos('value=', LowerCase(cl))=0) AND (Pos('/>', cl)>0) then begin
+      PB[i-1].Value := PB[i-1].Value + Copy(cl,1,Pos('/>', cl)-2);
+    end;
+  until Eof(InFile);
+  Form1.DBG_Count.Text := IntToStr(i);
+  Form1.DBG_SelEntry.MaxValue := i-1;
+  Form1.StatusBar.SimpleText := 'File openened. Now parsing for Contacts ...';
+
+  j := 1;
+  i := 0;
+  while (i<Length(PB)-1) do begin
+    if  (Pos('Contacts', PB[i].Group)>0) then begin
+      SetLength(PhoneBook, j);
+      PhoneBook[j-1] := ParsePBStream(PB[i].Value);
+      Inc(j);
+    end;
     Inc(i);
-    ReadLn(InFile, cl);
-  until Eof(InFile) OR (cl='<Contacts/>');
-  PhoneBookMax := i-1;
-  Form1.StatusBar.SimpleText := 'Loaded '+IntToStr(PhoneBookMax)+' contacts into memory.';
+    if (Pos('Calendar', PB[i].Group)>0) then break;
+  end;
+  Form1.StatusBar.SimpleText := 'Loaded '+IntToStr(Length(PhoneBook))+' contacts into memory.';
   BuildPBList;
+
   Form1.ProgressBar.Visible := false;
 end;
 
@@ -405,7 +460,7 @@ var i: integer;
     x: TJPEGImage;
     y: TGIFImage;
 begin
-  i := Form1.PB_List.ItemIndex+1;
+  i := Form1.PB_List.ItemIndex;
   x := TJpegImage.Create;
   y := TGIFImage.Create;
   Form1.PB_Name.Text := FormatName(PhoneBook[i].Name);
@@ -447,7 +502,8 @@ end;
 procedure TForm1.PB_PhotoDelButtonClick(Sender: TObject);
 var i: integer;
 begin
-  i := Form1.PB_List.ItemIndex+1;
+  i := Form1.PB_List.ItemIndex;
+  DeleteFile(PhoneBook[i].PhotoFile);
   PhoneBook[i].PhotoFile := '';
   Form1.PB_ListClick(Sender);
 end;
@@ -488,7 +544,7 @@ begin
   PB_PhotoAtt.Checked := false;
   PB_Photo.Visible := false;
   DeleteTemp;
-  PhoneBookMax := 0;
+  SetLength(PhoneBook, 0);
   StatusBar.SimpleText := StatusBar.SimpleText + ' done.';
   Button_Close.Enabled := false;
   Button_SaveAs.Enabled := false;
@@ -498,6 +554,16 @@ begin
   Form1.DirectoryListBox1.Enabled := true;
   Form1.FilterComboBox1.Enabled := true;
   Form1.FileListBox1.Enabled := true;
+end;
+
+procedure TForm1.DBG_ShowEntryClick(Sender: TObject);
+var i: integer;
+begin
+  i := Form1.DBG_SelEntry.Value;
+  Form1.DBG_EntryGroup.Text := PB[i].Group;
+  Form1.DBG_EntryName.Text := PB[i].Name;
+  Form1.DBG_Entry.Text := PB[i].Value;
+  Form1.DBG_LastEntry.Checked := PB[i].LastOfGroup;
 end;
 
 end.

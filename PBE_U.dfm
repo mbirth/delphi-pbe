@@ -1,6 +1,6 @@
 object Form1: TForm1
-  Left = 198
-  Top = 109
+  Left = 190
+  Top = 105
   Width = 818
   Height = 656
   BorderIcons = [biSystemMenu, biMinimize]
@@ -33,7 +33,6 @@ object Form1: TForm1
     Width = 793
     Height = 329
     ActivePage = TabSheet1
-    TabIndex = 0
     TabOrder = 0
     object TabSheet1: TTabSheet
       Caption = 'Phonebook'
@@ -382,23 +381,13 @@ object Form1: TForm1
         ItemHeight = 13
         TabOrder = 0
       end
-      object SM_Message: TEdit
-        Left = 136
-        Top = 56
-        Width = 233
-        Height = 113
-        AutoSize = False
-        Enabled = False
-        TabOrder = 1
-        Text = 'SM_Message'
-      end
       object SM_SMSC: TEdit
         Left = 184
         Top = 8
         Width = 185
         Height = 21
         Enabled = False
-        TabOrder = 2
+        TabOrder = 1
         Text = 'SM_SMSC'
       end
       object SM_Recipient: TEdit
@@ -407,7 +396,7 @@ object Form1: TForm1
         Width = 185
         Height = 21
         Enabled = False
-        TabOrder = 3
+        TabOrder = 2
         Text = 'SM_Recipient'
       end
       object SM_PID: TEdit
@@ -416,7 +405,7 @@ object Form1: TForm1
         Width = 49
         Height = 21
         Enabled = False
-        TabOrder = 4
+        TabOrder = 3
         Text = 'SM_PID'
       end
       object SM_DCS: TEdit
@@ -425,7 +414,7 @@ object Form1: TForm1
         Width = 49
         Height = 21
         Enabled = False
-        TabOrder = 5
+        TabOrder = 4
         Text = 'SM_DCS'
       end
       object SM_TimeStamp: TEdit
@@ -434,7 +423,7 @@ object Form1: TForm1
         Width = 153
         Height = 21
         Enabled = False
-        TabOrder = 6
+        TabOrder = 5
         Text = 'SM_TimeStamp'
       end
       object SM_NewButton: TButton
@@ -444,7 +433,7 @@ object Form1: TForm1
         Height = 25
         Caption = 'New'
         Enabled = False
-        TabOrder = 7
+        TabOrder = 6
       end
       object SM_DelButton: TButton
         Left = 272
@@ -453,6 +442,16 @@ object Form1: TForm1
         Height = 25
         Caption = 'Delete!'
         Enabled = False
+        TabOrder = 7
+      end
+      object SM_Message: TMemo
+        Left = 136
+        Top = 56
+        Width = 233
+        Height = 137
+        Enabled = False
+        Lines.Strings = (
+          'SM_Message')
         TabOrder = 8
       end
     end
@@ -464,8 +463,7 @@ object Form1: TForm1
         Top = 8
         Width = 769
         Height = 273
-        ActivePage = TabSheet5
-        TabIndex = 0
+        ActivePage = TabSheet7
         TabOrder = 0
         object TabSheet5: TTabSheet
           Caption = 'WAP Profiles'
@@ -605,6 +603,91 @@ object Form1: TForm1
         end
       end
     end
+    object TabSheet12: TTabSheet
+      Caption = 'Debug'
+      ImageIndex = 4
+      object Label18: TLabel
+        Left = 8
+        Top = 8
+        Width = 86
+        Height = 13
+        Caption = 'Number of entries:'
+      end
+      object Label19: TLabel
+        Left = 16
+        Top = 58
+        Width = 29
+        Height = 13
+        Caption = 'Group'
+      end
+      object Label20: TLabel
+        Left = 13
+        Top = 83
+        Width = 28
+        Height = 13
+        Caption = 'Name'
+      end
+      object DBG_Count: TEdit
+        Left = 96
+        Top = 4
+        Width = 65
+        Height = 21
+        TabOrder = 0
+        Text = 'DBG_Count'
+      end
+      object DBG_Entry: TMemo
+        Left = 8
+        Top = 104
+        Width = 289
+        Height = 145
+        Lines.Strings = (
+          'DBG_Entry')
+        TabOrder = 1
+      end
+      object DBG_ShowEntry: TButton
+        Left = 328
+        Top = 56
+        Width = 121
+        Height = 25
+        Caption = 'Show Entry'
+        TabOrder = 2
+        OnClick = DBG_ShowEntryClick
+      end
+      object DBG_EntryGroup: TEdit
+        Left = 48
+        Top = 56
+        Width = 249
+        Height = 21
+        TabOrder = 3
+        Text = 'DBG_EntryGroup'
+      end
+      object DBG_EntryName: TEdit
+        Left = 48
+        Top = 80
+        Width = 249
+        Height = 21
+        TabOrder = 4
+        Text = 'DBG_EntryName'
+      end
+      object DBG_SelEntry: TSpinEdit
+        Left = 328
+        Top = 32
+        Width = 121
+        Height = 22
+        MaxValue = 0
+        MinValue = 0
+        TabOrder = 5
+        Value = 0
+      end
+      object DBG_LastEntry: TCheckBox
+        Left = 8
+        Top = 248
+        Width = 209
+        Height = 17
+        Caption = 'Last entry of this group'
+        TabOrder = 6
+      end
+    end
   end
   object StatusBar: TStatusBar
     Left = 0
@@ -688,8 +771,6 @@ object Form1: TForm1
     Top = 264
     Width = 465
     Height = 22
-    Min = 0
-    Max = 100
     TabOrder = 9
     Visible = False
   end
