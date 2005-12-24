@@ -1,6 +1,6 @@
 object Form1: TForm1
-  Left = 190
-  Top = 105
+  Left = 191
+  Top = 106
   Width = 818
   Height = 656
   BorderIcons = [biSystemMenu, biMinimize]
@@ -334,6 +334,7 @@ object Form1: TForm1
         Caption = 'New'
         Enabled = False
         TabOrder = 14
+        OnClick = PB_NewButtonClick
       end
       object PB_DelButton: TButton
         Left = 272
@@ -343,6 +344,7 @@ object Form1: TForm1
         Caption = 'Delete!'
         Enabled = False
         TabOrder = 15
+        OnClick = PB_DelButtonClick
       end
       object PB_SaveButton: TButton
         Left = 376
@@ -677,7 +679,7 @@ object Form1: TForm1
             Top = 8
             Width = 313
             Height = 21
-            ItemHeight = 13
+            ItemHeight = 0
             TabOrder = 3
             Text = 'SC_AvailSCs'
           end

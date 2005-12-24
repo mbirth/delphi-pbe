@@ -126,6 +126,8 @@ type
     procedure DBG_ShowEntryClick(Sender: TObject);
     procedure Button_SaveClick(Sender: TObject);
     procedure Button_SaveAsClick(Sender: TObject);
+    procedure PB_DelButtonClick(Sender: TObject);
+    procedure PB_NewButtonClick(Sender: TObject);
   private
     { Private declarations }
   public
@@ -139,6 +141,13 @@ type
     Title: String[15];
     Company: String[30];
     PhotoFile: String[255];
+  end;
+  TSMSEntry = record
+    PDUHeader: String[40];
+    SMSC, PhoneNo: longint;
+    TStamp: TDateTime;
+    Sent: boolean;
+    Msg: String[160];
   end;
   TPBData = record
     Group: AnsiString;
@@ -774,6 +783,16 @@ begin
   Button_Close.Caption := 'Cancel';
   FileName.Enabled := true;
   FileName.SetFocus;
+end;
+
+procedure TForm1.PB_DelButtonClick(Sender: TObject);
+begin
+  // Delete phonebook entry
+end;
+
+procedure TForm1.PB_NewButtonClick(Sender: TObject);
+begin
+  // Add new phonebook entry
 end;
 
 end.
